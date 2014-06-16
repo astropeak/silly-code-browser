@@ -23,7 +23,7 @@
 ;; DONE: Add save history in a file.
 ;; DONE: calculate line count of a file in elisp instead of call "wc" command.
 
-(load-file "~/work/projects/silly_code_browser/tree.el")
+(load-file "tree.el")
 ;; DONE: jump history not save the current position before jump, it only save the goto position.
 
 ;; TODO: the jump history function can be extracted as a single file.
@@ -752,6 +752,13 @@ the full list."
 (define-key scb-mode-map  (kbd "r") 'scb-redisplay-buffer)
 (define-key scb-mode-map  (kbd "g") 'scb-goto-file)
 (define-key scb-mode-map  (kbd "v") 'scb-view-file)
+
+(if (not ctl-q-map)
+    (progn
+      (defcustom ctl-q-map-prefix-key "\C-q"
+	"*The prefix key for all `ctl-q-map' commands.")
+      (define-prefix-command 'ctl-q-map)	;create a keymap
+      (global-set-key ctl-q-map-prefix-key 'ctl-q-map)));set the keymap's prefix key
 
 (define-key ctl-q-map  (kbd "b") 'scb-recover-buffer)
 (define-key ctl-q-map  (kbd "S") 'scb-search-text-i)
