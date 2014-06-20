@@ -121,3 +121,4 @@
 ;; (tree-get-parent tr 8)
 
 ;; (setq cur (cdr (tree-get-element-and-parent tr 8)))
+(provide 'tree)
