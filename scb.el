@@ -4,7 +4,7 @@
 
 ;; TODO: history-print: highlight the header of current line if it is not the child of previous line.
 
-(defconst scb-version "scb version 0.19. Add feature: update project file list. Fix a bugs of scb-history-print, change the header of the printed bookmakr in history buffer. Add scb-history-print, provide and require utils. Add scb-dump-variable. Add version function. Refactory the bookmark format. Refactor the code, escepicial codes related to tree, fix many bugs.. Add save and load history. ...,. Fix a bug. Improve history function, adding save the current pos. Add jump back function")
+(defconst scb-version "scb version 0.20. Done some refactory: don't use the unix command `grep' and `find' in this program, use lisp function and perl instead to make this program more protable. Add feature: update project file list. Fix a bugs of scb-history-print, change the header of the printed bookmakr in history buffer. Add scb-history-print, provide and require utils. Add scb-dump-variable. Add version function. Refactory the bookmark format. Refactor the code, escepicial codes related to tree, fix many bugs.. Add save and load history. ...,. Fix a bug. Improve history function, adding save the current pos. Add jump back function")
 (defvar scb-current-project nil)
 (defconst scb-root-dir "~/.silly_code_browser" "The root directory of scb, all projects is a sub directory of this directory")
 (defconst scb-file-list-name "file_list")
@@ -325,8 +325,7 @@ suffix is the file suffix to be mattched, multiple suffixes seperated by blanks.
 		   "bash"
 		   "-c"
 		   (format 
-		    "cat %s|xargs grep -nEH %s"
-		    (scb-project-file-list project)
+		    "perl-grep.pl %s `cat %s`"
 
 		    ;; Fix a bug: when the pattern is enclosed by "", then search it literal
 		    (if (and (string= (substring pattern 0 1) "\"")
@@ -335,7 +334,10 @@ suffix is the file suffix to be mattched, multiple suffixes seperated by blanks.
 			(progn 
 			  (message "%s" pattern)
 			  pattern)
-		      (scb-make-distribution-pattern pattern))))
+		      (scb-make-distribution-pattern pattern) ;TODO: this line is not used... the pattern is directly returned by the next line
+		      pattern)
+		    (scb-project-file-list project)
+		    ))
 
     (goto-char 0)
     (scb-mode)
