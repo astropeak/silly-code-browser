@@ -24,6 +24,7 @@
 ;; DONE: calculate line count of a file in elisp instead of call "wc" command.
 
 (require 'tree)
+(require 'find-lisp)
 ;; DONE: jump history not save the current position before jump, it only save the goto position.
 
 ;; TODO: the jump history function can be extracted as a single file.
@@ -260,13 +261,15 @@ suffix is the file suffix to be mattched, multiple suffixes seperated by blanks.
 	  (goto-char (point-max))
 	  (insert "\n")
 
-	  (insert 
-	   (replace-regexp-in-string 
-	    ;; TODO: remove empty lines
-	    "^\\(.*\\)$" "\"\\1\"" 	
-	    (shell-command-to-string 
-	     (format "find %s -regex %s" dir 
-		     (scb-make-regex-suffix suffix)))))
+	  (mapcar (lambda (line)
+		    (insert (format "\"%s\"\n" line)))
+		  (find-lisp-find-files
+		   dir
+		   (concat (replace-regexp-in-string
+			    "\"" ""
+			    (scb-make-regex-suffix suffix))
+			   "$")))
+
 	  (save-buffer))
 	;; TODO: make sure all lines of the file is unique
 	)
