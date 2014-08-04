@@ -14,6 +14,8 @@
 (defconst scb-history-buffer-name "*SCB HISTORY*")
 (defconst scb-project-config-file-name "config")
 
+(defvar scb-tag-file-ok-p nil)
+
 ;; DONE[No problem]: BUG: Adding bookmark under head node is wrong, two bookmarks will be added.
 ;; DONE: BUGS on history bookmark: all projects share a single scb-jump-history during a session. Should be when open a project, this project's bookmark should be loaded.
 ;; TODO: BUGS: 1.[FIXED] when history is saved into file, the current positon of bookmark is not saved. 2.[FIXED] If there are two subtree under the head node, then after enter a subtree by "\C-q i", you can not enter to another subtree. The problem is, you can not back to head node. 3. Even a file is not in the current projcet, it will be added to history when jumping.
@@ -211,6 +213,11 @@ suffix is the file suffix to be mattched, multiple suffixes seperated by blanks.
 	(or (tree-head-element-p scb-jump-current)
 	    (scb-jump-to-bookmark scb-jump-current))
 
+	;; prepare tag file
+	(if (file-exists-p (scb-project-tag-file-name scb-current-project))
+	    (scb-setup-tag)
+	  (scb-create-tag-table))
+ 
 	(message "Project %s opened, %d files in the project." 
 		 project 
 		 (scb-project-file-count scb-current-project)))
@@ -951,19 +958,40 @@ e.g. lst=(\"this\"  \"is\"), result is:
 
 (define-key minibuffer-local-completion-map (kbd "C-f") 'scb-minibuffer-completion)
 
+(defun scb-setup-tag ()
+  (visit-tags-table (scb-project-tag-file-name scb-current-project))
+  (setq scb-tag-file-ok-p t))
+
 ;; TODO: if many file in the file list, maybe wrong
 (defun scb-create-tag-table ()
-  (start-process "*SCB-TAG*" "*SCB-TAG*"
-		 "bash"
-		 "-c"
-		 (format "\"c:/Program Files/emacs-24.3/bin/etags.exe\" --output=%s %s"
-			 (expand-file-name (scb-project-tag-file-name scb-current-project))
-			 (replace-regexp-in-string 
-			  "\n" " "
-			  (with-current-buffer (find-file-noselect 
-						(scb-project-file-list scb-current-project))
-			    (buffer-string)))
-			 )))
+  ;; The string describing the event looks like one of the following:
+  ;; * "finished\n".
+  ;; * "exited abnormally with code exitcode\n".
+  ;; * "name-of-signal\n".
+  ;; * "name-of-signal (core dumped)\n".
+  (setq scb-tag-file-ok-p nil)
+  (set-process-sentinel
+   (start-process "*SCB-TAG*" "*SCB-TAG*"
+		  "bash"
+		  "-c"
+		  (format  "etags -f %s %s"
+			  (expand-file-name (scb-project-tag-file-name scb-current-project))
+			  (replace-regexp-in-string 
+			   "\n" " "
+			   (with-current-buffer (find-file-noselect 
+						 (scb-project-file-list scb-current-project))
+			     (buffer-string)))
+			  ))
+   
+   (lambda (process event)
+     (if (string-equal event "finished\n")
+	 (progn 
+	   (scb-setup-tag)
+	   (message "tags file created for project %s" scb-current-project))
+       (setq scb-tag-file-ok-p nil)       
+	 ;;(princ
+	 ;;(format "Process: %s had the event `%s'" process event))
+       ))))
 
 (defun scb-find-definition (pattern)
   (interactive 
@@ -973,12 +1001,30 @@ e.g. lst=(\"this\"  \"is\"), result is:
 			 (thing-at-point 'symbol) )
 		 nil nil
 		 (thing-at-point 'symbol))))
-  (scb-create-tag-table)
-  (visit-tags-table (scb-project-tag-file-name scb-current-project))
-  (let ((buffer (find-tag-noselect pattern)))
-    (switch-to-buffer-other-window buffer)
-    )
-  )
+  (if scb-tag-file-ok-p
+      (let ((buffer)
+	    (point))
+	(save-excursion 
+	  (setq buffer (find-tag-noselect pattern))
+	  (setq point (with-current-buffer buffer
+			(point))))
+
+	;; Save the current file before going
+	(scb-history-set-current-file)
+
+	;; Record the jump history. 
+	;; Change algorithm. Also saved the position before jumping
+	;; Save the current file and position
+	(and scb-current-file
+	     (with-current-buffer (find-file-noselect scb-current-file)
+	       (scb-history-add)))
+
+	(switch-to-buffer-other-window buffer)
+	(goto-char point)
+	
+	(scb-history-add)
+	)
+    (message "tags file is not ok, please wait...")))
 
 (while nil
 ;; set tags file path
