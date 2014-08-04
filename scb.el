@@ -9,6 +9,7 @@
 (defconst scb-root-dir "~/.silly_code_browser" "The root directory of scb, all projects is a sub directory of this directory")
 (defconst scb-file-list-name "file_list")
 (defconst scb-history-file-name "history")
+(defconst scb-tag-file-name "TAGS")
 (defconst scb-buffer-name "*SCB*")
 (defconst scb-history-buffer-name "*SCB HISTORY*")
 (defconst scb-project-config-file-name "config")
@@ -65,6 +66,11 @@
   "Get the history file of project"
   (and (stringp project)
        (concat (scb-project-dir project) "/" scb-history-file-name)))
+
+(defun scb-project-tag-file-name (project)
+  "Get the tag file name of the project"
+  (and (stringp project)
+       (concat (scb-project-dir project) "/" scb-tag-file-name)))
 
 (defun scb-project-exists-p (project)
   "Whether `project' is exists or not"
@@ -945,4 +951,55 @@ e.g. lst=(\"this\"  \"is\"), result is:
 
 (define-key minibuffer-local-completion-map (kbd "C-f") 'scb-minibuffer-completion)
 
+;; TODO: if many file in the file list, maybe wrong
+(defun scb-create-tag-table ()
+  (start-process "*SCB-TAG*" "*SCB-TAG*"
+		 "bash"
+		 "-c"
+		 (format "\"c:/Program Files/emacs-24.3/bin/etags.exe\" --output=%s %s"
+			 (expand-file-name (scb-project-tag-file-name scb-current-project))
+			 (replace-regexp-in-string 
+			  "\n" " "
+			  (with-current-buffer (find-file-noselect 
+						(scb-project-file-list scb-current-project))
+			    (buffer-string)))
+			 )))
+
+(defun scb-find-definition (pattern)
+  (interactive 
+   (list
+    (read-string (format "Search text(%s):[%s] " 
+			 scb-current-project
+			 (thing-at-point 'symbol) )
+		 nil nil
+		 (thing-at-point 'symbol))))
+  (scb-create-tag-table)
+  (visit-tags-table (scb-project-tag-file-name scb-current-project))
+  (let ((buffer (find-tag-noselect pattern)))
+    (switch-to-buffer-other-window buffer)
+    )
+  )
+
+(while nil
+;; set tags file path
+(visit-tags-table (scb-project-tag-file-name scb-current-project))
+(find-tag-noselect "w3m")
+(find-tag "w3m")
+;;(tags-search)
+;;(tags-loop-continue)
+(find-tag-in-order PATTERN SEARCH-FORWARD-FUNC ORDER
+NEXT-LINE-AFTER-FAILURE-P MATCHING FIRST-SEARCH)
+
+  (message "search-forward-func=%s, %s, %s, %s, %s" 
+	   search-forward-func
+	   order
+	   next-line-after-failure-p
+	   matching
+	   first-search)
+
+
+(find-tag-in-order "w3m" 'search-forward '(tag-exact-file-name-match-p tag-file-name-match-p tag-exact-match-p tag-implicit-name-match-p tag-symbol-match-p tag-word-match-p tag-partial-file-name-match-p tag-any-match-p)  nil "containing" t)
+
+
+)
 (provide 'scb)
