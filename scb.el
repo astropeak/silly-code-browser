@@ -1,4 +1,4 @@
-;;;; Installation
+;;;; Installationhy
 ;;(add-to-list 'load-path "~/work/projects/silly_code_browser")
 ;;(require 'scb)
 
