@@ -1,4 +1,4 @@
-;;;; Installationhy
+;;;; Installation
 ;;(add-to-list 'load-path "~/work/projects/silly_code_browser")
 ;;(require 'scb)
 
@@ -786,6 +786,7 @@ the full list."
 (define-key ctl-q-map  (kbd "u") 'scb-previous-jump)
 (define-key ctl-q-map  (kbd "i") 'scb-next-jump)
 (define-key ctl-q-map  (kbd "f") 'scb-find-file)
+(define-key ctl-q-map  (kbd "d") 'scb-find-definition)
 
 ;; from overlay file
 (defun scb-get-pos (start)
@@ -964,11 +965,13 @@ e.g. lst=(\"this\"  \"is\"), result is:
 
 ;; TODO: if many file in the file list, maybe wrong
 (defun scb-create-tag-table ()
+  "Create tag file for current project. will called when the project is created, manually call this will let the tag file rebuild."
   ;; The string describing the event looks like one of the following:
   ;; * "finished\n".
   ;; * "exited abnormally with code exitcode\n".
   ;; * "name-of-signal\n".
   ;; * "name-of-signal (core dumped)\n".
+  (interactive)
   (setq scb-tag-file-ok-p nil)
   (set-process-sentinel
    (start-process "*SCB-TAG*" "*SCB-TAG*"
