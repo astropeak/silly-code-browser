@@ -4,7 +4,7 @@
 
 ;; TODO: history-print: highlight the header of current line if it is not the child of previous line.
 
-(defconst scb-version "scb version 0.21. Done some refactory: don't use the unix command `grep' and `find' in this program, use lisp function and perl instead to make this program more protable. Add feature: update project file list. Fix a bugs of scb-history-print, change the header of the printed bookmakr in history buffer. Add scb-history-print, provide and require utils. Add scb-dump-variable. Add version function. Refactory the bookmark format. Refactor the code, escepicial codes related to tree, fix many bugs.. Add save and load history. ...,. Fix a bug. Improve history function, adding save the current pos. Add jump back function")
+(defconst scb-version "scb version 0.30. Add feature: move a subtree of bookmark tree to a branch. Done some refactory: don't use the unix command `grep' and `find' in this program, use lisp function and perl instead to make this program more protable. Add feature: update project file list. Fix a bugs of scb-history-print, change the header of the printed bookmakr in history buffer. Add scb-history-print, provide and require utils. Add scb-dump-variable. Add version function. Refactory the bookmark format. Refactor the code, escepicial codes related to tree, fix many bugs.. Add save and load history. ...,. Fix a bug. Improve history function, adding save the current pos. Add jump back function")
 (defvar scb-current-project nil)
 (defconst scb-root-dir "~/.silly_code_browser" "The root directory of scb, all projects is a sub directory of this directory")
 (defconst scb-file-list-name "file_list")
@@ -156,13 +156,13 @@ suffix is the file suffix to be mattched, multiple suffixes seperated by blanks.
 
     (move-beginning-of-line nil)
     (if (search-forward (scb-bookmark-content bookmark)
-				 (point-max) t)
+			(point-max) t)
 	(setq f (point-to-linum (point)))
       (setq f 9999999))
 
     (move-beginning-of-line nil)
     (if (search-backward (scb-bookmark-content bookmark)
-				(point-min) t)
+			 (point-min) t)
 	(setq b (point-to-linum (point)))
       (setq b -9999999))
 
@@ -195,7 +195,7 @@ suffix is the file suffix to be mattched, multiple suffixes seperated by blanks.
   (interactive 
    (list
     (completing-read 
-    "Project name: " (directory-files scb-root-dir) nil t)))
+     "Project name: " (directory-files scb-root-dir) nil t)))
 
   (if (and (not (equal project "")) 	;if not char is entered, this will be a empty string.
 	   (scb-project-exists-p project))
@@ -217,7 +217,7 @@ suffix is the file suffix to be mattched, multiple suffixes seperated by blanks.
 	(if (file-exists-p (scb-project-tag-file-name scb-current-project))
 	    (scb-setup-tag)
 	  (scb-create-tag-table))
- 
+	
 	(message "Project %s opened, %d files in the project." 
 		 project 
 		 (scb-project-file-count scb-current-project)))
@@ -393,13 +393,13 @@ suffix is the file suffix to be mattched, multiple suffixes seperated by blanks.
 	   (scb-bookmark-fname scb-jump-current))
     (equal (scb-bookmark-linum bookmark)
 	   (scb-bookmark-linum scb-jump-current)))
-     
+   
    (progn
      (tree-add-element scb-jump-history 
 		       scb-jump-current
 		       bookmark)
      (setq scb-jump-current bookmark)
-       
+     
      ;; save the modification to file
      (scb-history-save))))
 
@@ -553,14 +553,14 @@ the full list."
 		(if (scb-bookmark-p e)
 		    (format "%S\n" e)
 
-		    ;; (format "%S:+:%S:+:%S:+:%S"
-		    ;; 	    ;;(scb-shorter-str (replace-regexp-in-string "^[^:]*/" "" (scb-bookmark-fname e)) 16)
-		    ;; 	    (scb-bookmark-fname e)
-		    ;; 	    (scb-bookmark-linum e)
-		    ;; 	    (scb-bookmark-content e)
-		    ;; 	    ;;(format-time-string "%y/%m/%d %H:%M" (scb-bookmark-time e))
-		    ;; 	    (scb-bookmark-time e)
-		    ;; 	    )
+		  ;; (format "%S:+:%S:+:%S:+:%S"
+		  ;; 	    ;;(scb-shorter-str (replace-regexp-in-string "^[^:]*/" "" (scb-bookmark-fname e)) 16)
+		  ;; 	    (scb-bookmark-fname e)
+		  ;; 	    (scb-bookmark-linum e)
+		  ;; 	    (scb-bookmark-content e)
+		  ;; 	    ;;(format-time-string "%y/%m/%d %H:%M" (scb-bookmark-time e))
+		  ;; 	    (scb-bookmark-time e)
+		  ;; 	    )
 		  (format "%s\n" e)))
 	      scb-history-header-function)
   (toggle-read-only 1)
@@ -585,19 +585,21 @@ the full list."
 	  (setq ovl
 		(make-overlay from (line-end-position)))
 	  (overlay-put ovl
-	   'display (if (scb-bookmark-p bmk)
-			(format "%-21s %s"
-				(scb-shorter-str
-				 (format "%s:%d"
-					 (scb-shorter-str (replace-regexp-in-string "^[^:]*/" "" (scb-bookmark-fname bmk)) 16)
-					 (scb-bookmark-linum bmk)) 21)
-				(replace-regexp-in-string 
-				 "^[ \t]*" "" 
-				 (scb-bookmark-content bmk))
-				)
-		      "Not a scb bookmark"))
+		       'display (if (scb-bookmark-p bmk)
+				    (if (scb-bookmark-branch-node-p bmk)
+					(format "%s" (scb-bookmark-fname bmk))
+				      (format "%-21s %s"
+					      (scb-shorter-str
+					       (format "%s:%d"
+						       (scb-shorter-str (replace-regexp-in-string "^[^:]*/" "" (scb-bookmark-fname bmk)) 16)
+						       (scb-bookmark-linum bmk)) 21)
+					      (replace-regexp-in-string 
+					       "^[ \t]*" "" 
+					       (scb-bookmark-content bmk))
+					      ))
+				  "Not a scb bookmark"))
 	  (overlay-put ovl
-	   'face 'font-lock-keyword-face))
+		       'face 'font-lock-keyword-face))
 
 	))))
 
@@ -615,7 +617,7 @@ the full list."
       (re-search-forward scb-history-header-pattern (point-max) t)
       (setq bmk (read (current-buffer)))
       (setq scb-jump-current
-          (scb-jump-to-bookmark-other-window bmk))
+	    (scb-jump-to-bookmark-other-window bmk))
       )))
 
 
@@ -674,15 +676,17 @@ the full list."
   "Goto the provious jump trace"
   (interactive)
   (if (tree-head-element-p scb-jump-current)
-      (message "No previous bookmark")	
+      (message "No previous bookmark(current is head)")	
     (let ((parent (tree-get-parent scb-jump-history scb-jump-current)))
       (if (tree-head-element-p parent)
-	  (message "No previous bookmark")	
-
-	(scb-jump-to-bookmark parent)
-	;;(message "previous pos=%s" pos)
-	)
-      (setq scb-jump-current parent))))
+	  (message "No previous bookmark(parent is head)")	
+	(if (scb-bookmark-branch-node-p parent)
+	    (progn 
+	      (message "No previous bookmark(parent is branch)")
+	      (setq parent (tree-get-parent scb-jump-history parent)))
+	  (scb-jump-to-bookmark parent)))
+      (setq scb-jump-current parent)
+      )))
 
 (defun scb-next-jump ()
   "Goto the next jump trace"
@@ -691,12 +695,15 @@ the full list."
   (let* ((children (tree-get-children scb-jump-history scb-jump-current))
 	 (select-list
 	  (mapcar (lambda (bookmark)
-		    (format "%s:%d %s" 
-			    (scb-shorter-str 
-			     (replace-regexp-in-string "^[^:]*/" "" (scb-bookmark-fname bookmark)) 16)
-			    
-			    (scb-bookmark-linum bookmark)
-			    (scb-bookmark-content bookmark)))
+		    (and (scb-bookmark-p bookmark)
+			 (if (scb-bookmark-branch-node-p bookmark)
+			     (format "Branch: %s" (scb-bookmark-fname bookmark))
+			   (format "%s:%d %s" 
+				   (scb-shorter-str 
+				    (replace-regexp-in-string "^[^:]*/" "" (scb-bookmark-fname bookmark)) 16)
+				   
+				   (scb-bookmark-linum bookmark)
+				   (scb-bookmark-content bookmark)))))
 		  children))
 	 (select))
 
@@ -716,7 +723,9 @@ the full list."
 	  (let ((a children) (b select-list))
 	    (while (and a b )
 	      (when (equal (car b) select)
-		(scb-jump-to-bookmark (car a))
+		(if (scb-bookmark-branch-node-p (car a))
+		    (message "Enter branch-node %s" (scb-bookmark-fname (car a)))
+		  (scb-jump-to-bookmark (car a)))
 		;;(recenter)
 		(setq scb-jump-current (car a)))
 
@@ -746,19 +755,19 @@ the full list."
 
   (let ((rst (delete-dups
 	      (split-string
-	      (shell-command-to-string 
-	       (format "grep %s %s"
-		       pattern
-		       (scb-project-file-list scb-current-project)))
-	      "\n" t))))
+	       (shell-command-to-string 
+		(format "grep %s %s"
+			pattern
+			(scb-project-file-list scb-current-project)))
+	       "\n" t))))
 
     (message "rst=%s" rst)
     (if (not rst)
 	(message "No file match pattern: %s" pattern)
       (setq rst (mapcar (lambda (str)
 			  (replace-regexp-in-string 
-			     "\"\\(.*\\)\"" "\\1" 
-			     str)) rst))
+			   "\"\\(.*\\)\"" "\\1" 
+			   str)) rst))
       (message "after rst=%s" rst)      
       (if (= (length rst) 1) 
           (find-file (car rst))
@@ -774,7 +783,7 @@ the full list."
 
 (progn
   (defcustom ctl-q-map-prefix-key "\C-q"
-	"*The prefix key for all `ctl-q-map' commands.")
+    "*The prefix key for all `ctl-q-map' commands.")
   (define-prefix-command 'ctl-q-map)	;create a keymap
   (global-set-key ctl-q-map-prefix-key 'ctl-q-map));set the keymap's prefix key
 
@@ -818,9 +827,9 @@ the full list."
 	  (setq ovl
 		(make-overlay from (nth 2 rst)))
 	  (overlay-put ovl
-	   'display (car (scb-convert-string str)))
+		       'display (car (scb-convert-string str)))
 	  (overlay-put ovl
-	   'face 'font-lock-keyword-face))
+		       'face 'font-lock-keyword-face))
 
 	(setq from (nth 3 rst))
 	)))
@@ -931,30 +940,30 @@ e.g. lst=(\"this\"  \"is\"), result is:
   (incf scb-next-select-idx)
   ;; DONE: BUG: the first element is deleted when do the selection. Remove the sort function will fix this problem.
 
-;; idx=1, table=(request.lisp:59                         (snmp-request session 'get-request-pdu bindings compiler.lisp:14   #-lispworks)
-;; selection=(compiler.lisp:14   #-lispworks request.lisp:59                         (snmp-request session 'get-request-pdu bindings)
+  ;; idx=1, table=(request.lisp:59                         (snmp-request session 'get-request-pdu bindings compiler.lisp:14   #-lispworks)
+  ;; selection=(compiler.lisp:14   #-lispworks request.lisp:59                         (snmp-request session 'get-request-pdu bindings)
 
   ;; here it is deleted.
-;; idx=0, table=(request.lisp:59                         (snmp-request session 'get-request-pdu bindings)
-;; selection=(request.lisp:59                         (snmp-request session 'get-request-pdu bindings)
+  ;; idx=0, table=(request.lisp:59                         (snmp-request session 'get-request-pdu bindings)
+  ;; selection=(request.lisp:59                         (snmp-request session 'get-request-pdu bindings)
 
-;; idx=0, table=(request.lisp:59                         (snmp-request session 'get-request-pdu bindings)
-;; selection=(request.lisp:59                         (snmp-request session 'get-request-pdu bindings)
-;; idx=0, table=(request.lisp:59                         (snmp-request session 'get-request-pdu bindings)
-;; selection=(request.lisp:59                         (snmp-request session 'get-request-pdu bindings)
+  ;; idx=0, table=(request.lisp:59                         (snmp-request session 'get-request-pdu bindings)
+  ;; selection=(request.lisp:59                         (snmp-request session 'get-request-pdu bindings)
+  ;; idx=0, table=(request.lisp:59                         (snmp-request session 'get-request-pdu bindings)
+  ;; selection=(request.lisp:59                         (snmp-request session 'get-request-pdu bindings)
 
 
 
   (let ((selection (sort 
 		    (delete-dups (copy-list minibuffer-completion-table))
 		    'string<)))
-;;  (let ((selection (delete-dups minibuffer-completion-table)))  
+    ;;  (let ((selection (delete-dups minibuffer-completion-table)))  
     ;;(message "selection=%s" selection)
     (if (>= scb-next-select-idx (length selection))
 	(setq scb-next-select-idx 0))
 
     (insert (format "%s" (nth scb-next-select-idx selection))))
-    ;;(message "table: %s" minibuffer-completion-table)
+  ;;(message "table: %s" minibuffer-completion-table)
   )
 
 (define-key minibuffer-local-completion-map (kbd "C-f") 'scb-minibuffer-completion)
@@ -978,13 +987,13 @@ e.g. lst=(\"this\"  \"is\"), result is:
 		  "bash"
 		  "-c"
 		  (format  "etags -f %s %s"
-			  (expand-file-name (scb-project-tag-file-name scb-current-project))
-			  (replace-regexp-in-string 
-			   "\n" " "
-			   (with-current-buffer (find-file-noselect 
-						 (scb-project-file-list scb-current-project))
-			     (buffer-string)))
-			  ))
+			   (expand-file-name (scb-project-tag-file-name scb-current-project))
+			   (replace-regexp-in-string 
+			    "\n" " "
+			    (with-current-buffer (find-file-noselect 
+						  (scb-project-file-list scb-current-project))
+			      (buffer-string)))
+			   ))
    
    (lambda (process event)
      (if (string-equal event "finished\n")
@@ -992,8 +1001,8 @@ e.g. lst=(\"this\"  \"is\"), result is:
 	   (scb-setup-tag)
 	   (message "tags file created for project %s" scb-current-project))
        (setq scb-tag-file-ok-p nil)       
-	 ;;(princ
-	 ;;(format "Process: %s had the event `%s'" process event))
+       ;;(princ
+       ;;(format "Process: %s had the event `%s'" process event))
        ))))
 
 (defun scb-find-definition (pattern)
@@ -1030,14 +1039,14 @@ e.g. lst=(\"this\"  \"is\"), result is:
     (message "tags file is not ok, please wait...")))
 
 (while nil
-;; set tags file path
-(visit-tags-table (scb-project-tag-file-name scb-current-project))
-(find-tag-noselect "w3m")
-(find-tag "w3m")
-;;(tags-search)
-;;(tags-loop-continue)
-(find-tag-in-order PATTERN SEARCH-FORWARD-FUNC ORDER
-NEXT-LINE-AFTER-FAILURE-P MATCHING FIRST-SEARCH)
+  ;; set tags file path
+  (visit-tags-table (scb-project-tag-file-name scb-current-project))
+  (find-tag-noselect "w3m")
+  (find-tag "w3m")
+  ;;(tags-search)
+  ;;(tags-loop-continue)
+  (find-tag-in-order PATTERN SEARCH-FORWARD-FUNC ORDER
+		     NEXT-LINE-AFTER-FAILURE-P MATCHING FIRST-SEARCH)
 
   (message "search-forward-func=%s, %s, %s, %s, %s" 
 	   search-forward-func
@@ -1047,8 +1056,36 @@ NEXT-LINE-AFTER-FAILURE-P MATCHING FIRST-SEARCH)
 	   first-search)
 
 
-(find-tag-in-order "w3m" 'search-forward '(tag-exact-file-name-match-p tag-file-name-match-p tag-exact-match-p tag-implicit-name-match-p tag-symbol-match-p tag-word-match-p tag-partial-file-name-match-p tag-any-match-p)  nil "containing" t)
+  (find-tag-in-order "w3m" 'search-forward '(tag-exact-file-name-match-p tag-file-name-match-p tag-exact-match-p tag-implicit-name-match-p tag-symbol-match-p tag-word-match-p tag-partial-file-name-match-p tag-any-match-p)  nil "containing" t)
 
 
-)
+  )
+
+
+(defun scb-history-create-branch-i (name)
+  "Create a new branch"
+  (let ((branch-node (make-scb-bookmark 
+		      :fname name
+		      :linum "ABCDCBA"
+		      :content ""
+		      :time (current-time))))
+    (tree-add-element scb-jump-history tree-head-element branch-node)
+    branch-node))
+
+(defun scb-history-create-branch (name)
+  (interactive "sBranch name: ")
+  (setq scb-jump-current (scb-history-create-branch-i name))
+  (scb-history-save))
+
+(defun scb-history-move (name)
+  (interactive "sBranch name: ")
+  (tree-move-subtree scb-jump-history scb-jump-current (scb-history-create-branch-i name))
+  (scb-history-save))
+
+(defun scb-bookmark-branch-node-p (bmk)
+  "Check if bmk is a branch node. A branch node is a bookmark, but its linum field is \"ABCDCBA\"(the magic string), and the branch's name is the fname field"
+  (and (scb-bookmark-p bmk) 
+       (stringp (scb-bookmark-linum bmk))
+       (string-equal (scb-bookmark-linum bmk) "ABCDCBA")))
+
 (provide 'scb)
