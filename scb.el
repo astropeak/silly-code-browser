@@ -804,7 +804,8 @@ the full list."
   (save-excursion
     (let ((a) (b) (c) (d))
       (goto-char start)
-      (setq a (re-search-forward ":" nil t))
+      (setq a (re-search-forward ":[0-9]" nil t))
+      (decf a)
       (setq b (re-search-forward ":" nil t))
       (setq c (re-search-forward "[ \t]*" nil t))
       (setq d (re-search-forward "\n" nil t))
@@ -856,7 +857,7 @@ the full list."
 (defun scb-get-element (str)
   (let ((fname) (line-number) (content)
 	(begin 0) (end 0))
-    (setq end (string-match ":" str begin))
+    (setq end (string-match ":[0-9]+" str begin))
     (setq fname (substring str begin end))
 
     (setq begin (+ end 1))
