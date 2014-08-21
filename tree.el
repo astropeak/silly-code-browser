@@ -89,6 +89,22 @@
       
       (car parent-tree))))
 
+(defun tree-decendent-p (tree elt1 elt2)
+  "Check if elt1 is a decendent of elt2 in the tree"
+  )
+
+(defun tree-move-subtree (tree elt parent-elt)
+  "Move the subtree whose root is `elt' to the tree whose root is `parent-elt'. BUG: if we move a element subtree to a child of it, there will be wrong. There will be a ring. So we must ensure parent is not a decendent of element before moving."
+  (let* ((rst (tree-get-element-and-parent tree elt 'equal))
+	 (subtree (car rst))
+	 (parent-subtree-old (cdr rst))
+	 (parent-subtree-new (car (tree-get-element-and-parent tree parent-elt 'equal))))
+    (when (and subtree parent-subtree-new)
+      (if (eq parent-subtree-new parent-subtree-old)
+	  (message "'%s' already the child of '%s', no needed to move" elt parent-elt)
+	(nconc parent-subtree-new (list subtree))
+	(delete subtree parent-subtree-old)))))
+
 (defun tree-create ()
   (cons tree-head-element nil))
 
@@ -100,14 +116,14 @@
   
   (and tree
        (progn 
-       (insert (format "%s%s"
-		       (funcall fn-header depth)
-		       (funcall fn (car tree))))
-       
-       (let ((child-list (cdr tree)))
-	 (while child-list
-	   (tree-print (car child-list) fn fn-header (+ depth 1))
-	   (setq child-list (cdr child-list)))))))
+	 (insert (format "%s%s"
+			 (funcall fn-header depth)
+			 (funcall fn (car tree))))
+	 
+	 (let ((child-list (cdr tree)))
+	   (while child-list
+	     (tree-print (car child-list) fn fn-header (+ depth 1))
+	     (setq child-list (cdr child-list)))))))
 
 
 ;; (tree-print (nth 1 scb-jump-history) (lambda (e)
