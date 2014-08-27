@@ -21,7 +21,7 @@
     (init . (lambda ()))
     ;; Needed for filenames with capitals letters.
     (disable-shortcuts)
-    (candidates . "file list not initilized")
+    (candidates . ("file list not initilized"))
     (keymap . ,anything-generic-files-map)
     (help-message . anything-generic-file-help-message)
     (mode-line . anything-generic-file-mode-line-string)
@@ -935,43 +935,6 @@ e.g. lst=(\"this\"  \"is\"), result is:
 	(setq idx (1- idx)))
       rst)))
 
-;; copy from minibuffer.el
-;; When jump to next bookmark, if more than one choices, using `\C-f' key to switch to the next one.
-(setq scb-next-select-idx -1)
-(defun scb-minibuffer-completion ()
-  (interactive)
-  ;;(message "idx=%d, table=%s" scb-next-select-idx minibuffer-completion-table)
-  (delete-region (field-beginning) (field-end))
-  (incf scb-next-select-idx)
-  ;; DONE: BUG: the first element is deleted when do the selection. Remove the sort function will fix this problem.
-
-  ;; idx=1, table=(request.lisp:59                         (snmp-request session 'get-request-pdu bindings compiler.lisp:14   #-lispworks)
-  ;; selection=(compiler.lisp:14   #-lispworks request.lisp:59                         (snmp-request session 'get-request-pdu bindings)
-
-  ;; here it is deleted.
-  ;; idx=0, table=(request.lisp:59                         (snmp-request session 'get-request-pdu bindings)
-  ;; selection=(request.lisp:59                         (snmp-request session 'get-request-pdu bindings)
-
-  ;; idx=0, table=(request.lisp:59                         (snmp-request session 'get-request-pdu bindings)
-  ;; selection=(request.lisp:59                         (snmp-request session 'get-request-pdu bindings)
-  ;; idx=0, table=(request.lisp:59                         (snmp-request session 'get-request-pdu bindings)
-  ;; selection=(request.lisp:59                         (snmp-request session 'get-request-pdu bindings)
-
-
-
-  (let ((selection (sort 
-		    (delete-dups (copy-list minibuffer-completion-table))
-		    'string<)))
-    ;;  (let ((selection (delete-dups minibuffer-completion-table)))  
-    ;;(message "selection=%s" selection)
-    (if (>= scb-next-select-idx (length selection))
-	(setq scb-next-select-idx 0))
-
-    (insert (format "%s" (nth scb-next-select-idx selection))))
-  ;;(message "table: %s" minibuffer-completion-table)
-  )
-
-(define-key minibuffer-local-completion-map (kbd "C-f") 'scb-minibuffer-completion)
 
 (defun scb-setup-tag ()
   (visit-tags-table (scb-project-tag-file-name scb-current-project))
