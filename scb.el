@@ -16,6 +16,22 @@
 
 (defvar scb-tag-file-ok-p nil)
 
+(defvar scb-anything-source-project-file
+  `((name . "Scb Project Files")
+    (init . (lambda ()))
+    ;; Needed for filenames with capitals letters.
+    (disable-shortcuts)
+    (candidates . "file list not initilized")
+    (keymap . ,anything-generic-files-map)
+    (help-message . anything-generic-file-help-message)
+    (mode-line . anything-generic-file-mode-line-string)
+    (match anything-c-match-on-basename)
+    ;; add a action to recentf(print the file name, just for try).  Without this action, the default action is open the file. 
+    ;; the candidates field in soure is the input of action function(for recentf, candidates is the name of an entry in recent file list)
+    ;;(action . (("print the candidates" . (lambda (candidate) (message "%s" candidate)))))
+    (type . file))
+  "scb project files for anything source. Help info please refer to `anything-sources' variable")
+
 ;; DONE[No problem]: BUG: Adding bookmark under head node is wrong, two bookmarks will be added.
 ;; DONE: BUGS on history bookmark: all projects share a single scb-jump-history during a session. Should be when open a project, this project's bookmark should be loaded.
 ;; TODO: BUGS: 1.[FIXED] when history is saved into file, the current positon of bookmark is not saved. 2.[FIXED] If there are two subtree under the head node, then after enter a subtree by "\C-q i", you can not enter to another subtree. The problem is, you can not back to head node. 3. Even a file is not in the current projcet, it will be added to history when jumping.
@@ -28,6 +44,7 @@
 
 (require 'tree)
 (require 'find-lisp)
+(require 'anything)
 ;; DONE: jump history not save the current position before jump, it only save the goto position.
 
 ;; TODO: the jump history function can be extracted as a single file.
@@ -217,6 +234,9 @@ suffix is the file suffix to be mattched, multiple suffixes seperated by blanks.
 	(if (file-exists-p (scb-project-tag-file-name scb-current-project))
 	    (scb-setup-tag)
 	  (scb-create-tag-table))
+
+	;; init anything sources
+	(setcdr (assoc 'candidates scb-anything-source-project-file) (scb-get-file-list))
 	
 	(message "Project %s opened, %d files in the project." 
 		 project 
@@ -749,32 +769,16 @@ the full list."
   ;;(toggle-read-only 1)
   )
 
-(defun scb-find-file (pattern)
-  "TODO: this fucntion is incomplete"
-  (interactive "sFind file by name: ")
+(defun scb-get-file-list ()
+  "Get a list of files of current project"
+  (with-current-buffer (find-file-noselect (scb-project-file-list scb-current-project))
+    (split-string (replace-regexp-in-string 
+		   "\"" "" (buffer-string))  "\n" t)))
 
-  (let ((rst (delete-dups
-	      (split-string
-	       (shell-command-to-string 
-		(format "grep %s %s"
-			pattern
-			(scb-project-file-list scb-current-project)))
-	       "\n" t))))
-
-    (message "rst=%s" rst)
-    (if (not rst)
-	(message "No file match pattern: %s" pattern)
-      (setq rst (mapcar (lambda (str)
-			  (replace-regexp-in-string 
-			   "\"\\(.*\\)\"" "\\1" 
-			   str)) rst))
-      (message "after rst=%s" rst)      
-      (if (= (length rst) 1) 
-          (find-file (car rst))
-        (find-file
-         (completing-read "Select: "
-                          rst
-                          nil t))))))
+(defun scb-find-file ()
+  "Find a file of current project"
+  (interactive)
+  (anything-other-buffer scb-anything-source-project-file "*scb project files*"))
 
 (define-derived-mode scb-mode text-mode "Scb")
 (define-key scb-mode-map  (kbd "r") 'scb-redisplay-buffer)
