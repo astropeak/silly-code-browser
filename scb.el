@@ -110,7 +110,7 @@
   (and (file-exists-p (scb-project-file-list project))
        (with-current-buffer 
            (find-file-noselect 
-            (scb-project-file-list project))
+            (scb-project-file-list project) t)
          (count-lines 1 (point-max)))))
 
 
@@ -128,14 +128,14 @@ suffix is the file suffix to be mattched, multiple suffixes seperated by blanks.
     (setq scb-current-project project)
 
     ;; add file
+    (message "Creating project %s ..." project)
     (scb-add-files dir suffix)
     
     ;; init the history file
     (scb-history-clear)
-    (scb-history-save)
 
     ;; save the config data
-    (with-current-buffer (find-file-noselect (scb-project-config-file project))
+    (with-current-buffer (find-file-noselect (scb-project-config-file project) t)
       (erase-buffer)
       (insert (format "%S" (make-scb-config
                             :version 0.01
@@ -163,7 +163,7 @@ suffix is the file suffix to be mattched, multiple suffixes seperated by blanks.
   (puthash key value table))
 
 (defun scb-convert-config ()
-  (with-current-buffer (find-file-noselect (scb-project-config-file scb-current-project))
+  (with-current-buffer (find-file-noselect (scb-project-config-file scb-current-project) t)
     (goto-char (point-min))
     (let ((config-data (read (current-buffer))))
       (when (listp config-data) ;; the old format is just a list: (base-dir suffix)
@@ -182,7 +182,7 @@ suffix is the file suffix to be mattched, multiple suffixes seperated by blanks.
   "Update a project, such as the file list"
   (interactive)
   (if (file-exists-p (scb-project-config-file scb-current-project))
-      (with-current-buffer (find-file-noselect (scb-project-config-file scb-current-project))
+      (with-current-buffer (find-file-noselect (scb-project-config-file scb-current-project) t)
         (goto-char (point-min))
         (let* ((config (read (current-buffer)))
                (base-dir (scb-config-get 'base-dir config))
@@ -268,8 +268,7 @@ suffix is the file suffix to be mattched, multiple suffixes seperated by blanks.
         (if (file-exists-p (scb-project-history project))
             (scb-history-load)
           ;; history file not exist, so init it.
-          (scb-history-clear)
-          (scb-history-save))
+          (scb-history-clear))
 
         ;; jump to the current bookmark
         (or (tree-head-element-p scb-jump-current)
@@ -333,7 +332,7 @@ suffix is the file suffix to be mattched, multiple suffixes seperated by blanks.
   (if (scb-project-exists-p scb-current-project)
       (progn
         (with-current-buffer (find-file-noselect 
-                              (scb-project-file-list scb-current-project))
+                              (scb-project-file-list scb-current-project) t)
           (if (eq mode 'overwrite)
               (erase-buffer))
 
@@ -358,7 +357,7 @@ suffix is the file suffix to be mattched, multiple suffixes seperated by blanks.
 (defun scb-file-exist-in-project-p (file project)
   "Check whether the `file' is in the `project'"
   (with-current-buffer (find-file-noselect 
-                        (scb-project-file-list project))
+                        (scb-project-file-list project) t)
     (save-excursion
       (goto-char 0)
       (search-forward file nil t))))
@@ -492,7 +491,8 @@ suffix is the file suffix to be mattched, multiple suffixes seperated by blanks.
   "Clear all history bookmarks"
   (interactive)
   (setq scb-jump-history (tree-create))
-  (setq scb-jump-current (car scb-jump-history)))
+  (setq scb-jump-current (car scb-jump-history))
+  (scb-history-save))
 
 
 (defun scb-history-load ()
@@ -546,15 +546,12 @@ the full list."
 (defun scb-history-save ()
   "Save the history list to a file. Then this file can be used to restore the history list when the project is opened next time."
   (interactive)
-  (let ((buffer (find-file-noselect (scb-project-history scb-current-project)))
-        )
-    
-    (with-current-buffer buffer
-      (erase-buffer)
+  (with-current-buffer (find-file-noselect (scb-project-history scb-current-project) t)
+    (erase-buffer)
       
-      (scb-dump-variable 'scb-jump-history)
+    (scb-dump-variable 'scb-jump-history)
 
-      (scb-dump-variable 'scb-jump-current)
+    (scb-dump-variable 'scb-jump-current)
 
       ;; (insert "(setq scb-jump-history '")
       ;; (insert (format "%s" scb-jump-history))
@@ -563,11 +560,7 @@ the full list."
       ;; currently the current jump postion can't be saved(if ), only set it to the head of the history list.
       ;;(insert "(setq scb-jump-current scb-jump-history)\n\n")
 
-      (save-buffer)
-      )
-    
-    )
-  )
+    (save-buffer)))
 
 (defvar scb-history-header-function '(lambda (dpt)
                                        (if (equal dpt 0)
@@ -820,7 +813,7 @@ the full list."
 
 (defun scb-get-file-list ()
   "Get a list of files of current project"
-  (with-current-buffer (find-file-noselect (scb-project-file-list scb-current-project))
+  (with-current-buffer (find-file-noselect (scb-project-file-list scb-current-project) t)
     (split-string (replace-regexp-in-string
                    "\"" "" (buffer-string))  "\n" t)))
 
