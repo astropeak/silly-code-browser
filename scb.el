@@ -14,7 +14,7 @@
 (require 'anything-config)
 (require 'anything-patch) ;; containing modification for work as a backend of scb-find-definition
 
-(defconst scb-version "scb version 0.45(150409). Shorter file name when find definiton. Added feature: update etags; anything etags as backend to find definition; elisp native grep; new format of config data.  Add feature: move a subtree of bookmark tree to a branch. Done some refactory: don't use the unix command `grep' and `find' in this program, use lisp function and perl instead to make this program more protable. Add feature: update project file list. Fix a bugs of scb-history-print, change the header of the printed bookmakr in history buffer. Add scb-history-print, provide and require utils. Add scb-dump-variable. Add version function. Refactory the bookmark format. Refactor the code, escepicial codes related to tree, fix many bugs.. Add save and load history. ...,. Fix a bug. Improve history function, adding save the current pos. Add jump back function")
+(defconst scb-version "scb version 0.46(150409). Shorter file name when find definiton and files.")
 (defvar scb-current-project nil)
 (defconst scb-root-dir "~/.silly_code_browser" "The root directory of scb, all projects is a sub directory of this directory")
 (defconst scb-file-list-name "file_list")
@@ -33,6 +33,7 @@
     (disable-shortcuts)
     ;; (candidates . ("file list not initilized"))
     (candidates . scb-get-file-list)
+    (candidate-transformer . aspk-anything-c-source-etags-transformer)
     (keymap . ,anything-generic-files-map)
     (help-message . anything-generic-file-help-message)
     (mode-line . anything-generic-file-mode-line-string)
