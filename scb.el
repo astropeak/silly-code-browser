@@ -139,7 +139,7 @@ suffix is the file suffix to be mattched, multiple suffixes seperated by blanks.
       (erase-buffer)
       (insert (format "%S" (make-scb-config
                             :version 0.01
-                            :base-dir dir
+                            :base-dir (expand-file-name dir)
                             :suffix suffix)))
       (save-buffer))
 
