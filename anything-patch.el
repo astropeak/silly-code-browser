@@ -10,6 +10,33 @@
       (setq anything-c-etags-tag-file-dir current-dir)
       (expand-file-name anything-c-etags-tag-file-name current-dir))))
 
+(defun aspk-anything-c-source-etags-transformer (candidate)
+  (if (file-exists-p (scb-project-config-file scb-current-project))
+      (with-current-buffer (find-file-noselect (scb-project-config-file scb-current-project))
+        (goto-char (point-min))
+        (let* ((config (read (current-buffer)))
+               (base-dir (scb-config-get 'base-dir config))
+               (len (length base-dir)))
+          (mapcar (lambda (cand)
+                    (if (listp cand) ;; cand is of format (DIS . VALUE)
+                        (cons (substring (car cand) len) (cdr cand))
+                      (cons (substring cand len) cand)))
+                  candidate)))
+    candidate))
+
+(setq anything-c-source-etags-select
+  '((name . "Etags")
+    (header-name . anything-c-source-etags-header-name)
+    (init . anything-c-etags-init)
+    (candidates-in-buffer)
+    (candidate-transformer . aspk-anything-c-source-etags-transformer)
+    (search . (anything-c-etags-search-fn))
+    (mode-line . anything-etags-mode-line-string)
+    (action . anything-c-etags-default-action)
+    (persistent-action . (lambda (candidate)
+                           (anything-c-etags-default-action candidate)
+                           (anything-match-line-color-current-line)))))
+
 (defun anything-c-etags-select (arg)
   "Preconfigured anything for etags.
 Called with one prefix arg use symbol at point as initial input.
