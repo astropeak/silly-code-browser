@@ -479,7 +479,7 @@ suffix is the file suffix to be mattched, multiple suffixes seperated by blanks.
    (make-scb-bookmark 
     :fname (buffer-file-name (current-buffer))
     :linum (count-lines 1 (1+ (point)))
-    :content (buffer-substring (line-beginning-position) (line-end-position))
+    :content (buffer-substring-no-properties (line-beginning-position) (line-end-position))
     :time (current-time))))
 
 (defun scb-history-reset ()
