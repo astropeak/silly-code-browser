@@ -13,7 +13,7 @@
 (defun current-line-number ()
   (line-number-at-pos))
 
-(defun aspk-grep (search-str files output-buffer)
+(defun aspk-grep (search-str files output-buffer &optional display-line-number-p)
   (let ((count (if (listp files) (length files) 1))
         (i 0))
     (mapc
@@ -27,9 +27,11 @@
            (setq p1 (progn (beginning-of-line) (point)))
            (setq p2 (progn (end-of-line) (point)))
            ;;(setq matched-line-str (buffer-substring-no-properties p1 p2))
-           ;; (setq line-number (current-line-number))
+           (if display-line-number-p
+               (setq line-number (current-line-number))
+             (setq line-number 0))
            (with-current-buffer output-buffer
-             (insert (format "%s:%d:" ξfp 0
+             (insert (format "%s:%d:" ξfp line-number
                              )))
            (append-to-buffer output-buffer p1 (min (point-max) (+ p2 1)))))
        (incf i)

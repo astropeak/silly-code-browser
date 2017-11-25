@@ -24,6 +24,8 @@
 (defconst scb-history-buffer-name "*SCB HISTORY*")
 (defconst scb-project-config-file-name "config")
 
+(defvar scb-option-display-line-number-p t "Where we should display line number when searching text. Efficiency might lower when enabled")
+
 (defvar scb-tag-file-ok-p nil)
 
 (defvar scb-anything-source-project-file
@@ -400,13 +402,13 @@ suffix is the file suffix to be mattched, multiple suffixes seperated by blanks.
                     ))
     ;;(shell-command-to-string "date")
     (if t
-        (aspk-grep pattern (scb-get-file-list) scb-buffer-name)
+        (aspk-grep pattern (scb-get-file-list) scb-buffer-name scb-option-display-line-number-p)
 
       (start-process "SCB" scb-buffer-name 
                      "bash"
                      "-c"
                      (format 
-                      "grep %s `cat %s`"
+                      "grep -n %s `cat %s`"
 
                       ;; Fix a bug: when the pattern is enclosed by "", then search it literal
                       (if (and (string= (substring pattern 0 1) "\"")
@@ -698,6 +700,7 @@ the full list."
   (if (eq (current-buffer) (get-buffer scb-buffer-name))
       (progn
         (move-beginning-of-line nil)
+        ;; 感觉可以写得更函数化一些。现在这个代码还是不够清晰，调试时都不好调。
         (let* ((pos (scb-get-pos (point)))
                (fname (buffer-substring (point) (1- (nth 0 pos))))
                (line-number (string-to-number 
@@ -889,11 +892,15 @@ the full list."
   (let ((start) (end) (lines (window-height)))
     (save-excursion
       
-      (move-beginning-of-line (* lines -1))
-      (setq start (point))
-      (move-end-of-line (* lines 2))
-      (setq end (point))
+      ;; (move-beginning-of-line (* lines -1))
+      ;; (setq start (point))
+      ;; (move-end-of-line (* lines 2))
+      ;; (setq end (point))
       
+      (goto-line 3)
+      (move-beginning-of-line nil)
+      (setq start (point))
+      (setq end(point-max))
       (scb-redisplay-buffer-i start end)
       )
     )
