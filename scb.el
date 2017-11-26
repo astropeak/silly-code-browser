@@ -830,12 +830,12 @@ the full list."
 
 (define-derived-mode scb-mode text-mode "Scb")
 (define-key scb-mode-map  (kbd "r") 'scb-redisplay-buffer)
-(define-key scb-mode-map  (kbd "g") 'scb-goto-file)
+(define-key scb-mode-map  (kbd "RET") 'scb-goto-file)
 (define-key scb-mode-map  (kbd "v") 'scb-view-file)
 
 ;; Define key for evil normal state
 (evil-define-key 'normal scb-mode-map (kbd "r") 'scb-redisplay-buffer)
-(evil-define-key 'normal scb-mode-map (kbd "g") 'scb-goto-file)
+(evil-define-key 'normal scb-mode-map (kbd "RET") 'scb-goto-file)
 (evil-define-key 'normal scb-mode-map (kbd "v") 'scb-view-file)
 (evil-define-key 'normal scb-mode-map (kbd "t") 'toggle-truncate-lines)
 
