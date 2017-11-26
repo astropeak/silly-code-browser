@@ -425,7 +425,8 @@ suffix is the file suffix to be mattched, multiple suffixes seperated by blanks.
     (goto-char 0)
     (scb-mode)
     ;;(scb-redisplay-buffer-1)
-    ;;(scb-redisplay-buffer)
+    (scb-redisplay-buffer)
+    (toggle-truncate-lines 1)
     ))
 
 (defun scb-search-text (pattern)
@@ -805,7 +806,8 @@ the full list."
   (let ((window (selected-window)))
     (when (scb-goto-file)
       (select-window window)
-      (forward-line))))
+      ;; (forward-line)
+      )))
 
 (defun scb-recover-buffer ()
   (interactive)
@@ -829,6 +831,12 @@ the full list."
 (define-key scb-mode-map  (kbd "r") 'scb-redisplay-buffer)
 (define-key scb-mode-map  (kbd "g") 'scb-goto-file)
 (define-key scb-mode-map  (kbd "v") 'scb-view-file)
+
+;; Define key for evil normal state
+(evil-define-key 'normal scb-mode-map (kbd "r") 'scb-redisplay-buffer)
+(evil-define-key 'normal scb-mode-map (kbd "g") 'scb-goto-file)
+(evil-define-key 'normal scb-mode-map (kbd "v") 'scb-view-file)
+(evil-define-key 'normal scb-mode-map (kbd "t") 'toggle-truncate-lines)
 
 (progn
   (defcustom ctl-q-map-prefix-key "\C-q"
