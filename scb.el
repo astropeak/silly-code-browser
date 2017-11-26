@@ -25,6 +25,7 @@
 (defconst scb-project-config-file-name "config")
 
 (defvar scb-option-display-line-number-p t "Where we should display line number when searching text. Efficiency might lower when enabled")
+(defvar scb-option-search-buffer-filename-max-length 32 "The maximum length of filename display in scb mode")
 
 (defvar scb-tag-file-ok-p nil)
 
@@ -856,8 +857,11 @@ the full list."
 
 ;; from overlay file
 (defun scb-get-pos (start)
-  "a: end of the first `:', b: end of the second `:', 
-   c: end of the blanks, d: end of the line "
+  "a: end of the first `:', b: end of the second `:',
+   c: end of the blanks, d: end of the line.
+   filename:linenumber:     text xxxx xxxx
+            a          b    c             d
+  "
   (save-excursion
     (let ((a) (b) (c) (d))
       (goto-char start)
@@ -899,12 +903,14 @@ the full list."
   (interactive)
   (let ((start) (end) (lines (window-height)))
     (save-excursion
-      
+
+      ;; Redisplay only current visble area
       ;; (move-beginning-of-line (* lines -1))
       ;; (setq start (point))
       ;; (move-end-of-line (* lines 2))
       ;; (setq end (point))
-      
+
+      ;; Redisplay all
       (goto-line 3)
       (move-beginning-of-line nil)
       (setq start (point))
@@ -945,7 +951,8 @@ the full list."
 
     (cons (format "%04d:%-16s    %s" (nth 1 tmp) 
                   (scb-shorter-str 
-                   (replace-regexp-in-string "^[^:]*/" "" (nth 0 tmp)) 16)
+                   (replace-regexp-in-string "^[^:]*/" "" (nth 0 tmp))
+                   scb-option-search-buffer-filename-max-length)
                   (replace-regexp-in-string "^[ \t]*" "" (nth 2 tmp)))
     	  str)))
 
