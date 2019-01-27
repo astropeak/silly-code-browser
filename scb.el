@@ -81,7 +81,8 @@
 (defun scb-project-dir (project)
   "Get the directory of project"
   (and (stringp project)
-       (concat scb-root-dir "/" project)))
+       (expand-file-name
+        (concat scb-root-dir "/" project))))
 
 (defun scb-project-file-list (project)
   "Get the file list file of project"
@@ -192,6 +193,14 @@ suffix is the file suffix to be mattched, multiple suffixes seperated by blanks.
                (suffix (scb-config-get 'suffix config)))
           (scb-add-files base-dir suffix 'overwrite)))
     (message "Config file not exist, not update")))
+
+(defun scb-get-config-data ()
+  (with-current-buffer (find-file-noselect (scb-project-config-file scb-current-project) t)
+    (goto-char (point-min))
+    (read (current-buffer))))
+
+(defun scb-get-base-dir ()
+  (scb-config-get 'base-dir (scb-get-config-data)))
 
 ;;(scb-create-project "elisp" "~/.emacs.d" "el")
 
@@ -383,6 +392,113 @@ suffix is the file suffix to be mattched, multiple suffixes seperated by blanks.
 (defun scb-history-get-current-file ()
   scb-current-file)
 
+(defun aspk-is-executable (cmd)
+  "check if the given cmd is an executable. Don't know if this works on Windows"
+  (equal (shell-command  (format "which %s" cmd)) 0))
+;; (aspk-is-executable "csearchaa")
+
+(defun scb-use-csearch-p ()
+  "use the google csearch to search pattern"
+  (and (aspk-is-executable "csearch")))
+
+(defun scb-use-system-grep-p ()
+  "use the unix grep command to search pattern"
+  (aspk-is-executable "grep"))
+
+(defun aspk-run-command (cmd)
+  (message "Run command: %s..." cmd)
+  (or (equal (shell-command cmd) 0)
+      (message "Error: fail to execute command: %s" cmd)
+      ))
+
+(defun aspk-create-csearch-index (path)
+  ;; (interactive)
+  (aspk-run-command (format "cindex '%s'" (file-truename path))))
+;; (aspk-create-csearch-index "~/V5")
+
+(defun scb-create-csearch-index ()
+  "Create or update csearch index for current projet"
+  (interactive)
+  (aspk-create-csearch-index (scb-get-base-dir)))
+
+;; (defsubst string-trim-right (string)
+;;   "Remove trailing whitespace from STRING."
+;;   (if (string-match "[ \t\n\r]+\\'" string)
+;;       (replace-match "" t t string)
+;;     string))
+
+
+(defun aspk-path-and-its-parents (path)
+  "make a list of the given path and all its parent path.
+TODO: this function may not work correct on Windows"
+  (or (equal path "/")
+      (setq path (string-remove-suffix "/" path)))
+  (let ((rst (list path)))
+    (while (not (equal path "/"))
+      (setq path (file-name-directory path))
+      (or (equal path "/")
+          (setq path (string-remove-suffix "/" path)))
+      (add-to-list 'rst path)
+      )
+    rst))
+;; (aspk-path-and-its-parents "/home/a/b/c/d/")
+;; (aspk-path-and-its-parents "/")
+
+(defun aspk-search-patten-in-buffer (pattern buffer)
+  (with-current-buffer buffer
+    (save-excursion
+      (goto-char (point-min))
+      (re-search-forward pattern  (point-max) t 1)
+      )
+    )
+  )
+
+;; (aspk-search-patten-in-buffer "^/Users/astropeak/V$" "*Shell Command Output*")
+;; 
+
+(defun aspk-or (&rest lst)
+  (or lst)
+  )
+;; (aspk-or '(1 2))
+
+(defun aspk-all-nil-p (lst)
+  "check if all element is nil in list"
+  ;; (apply or '(nil nil 9))
+  (while (and lst (not (car lst)))
+    (setq lst (cdr lst))
+    )
+  (equal (length lst) 0))
+
+;; (aspk-all-nil-p '(1 2))
+;; (aspk-all-nil-p '(nil nil))
+
+;; TODO: this way doen't work
+;; Because even the path and its parents are included in 'cindex -list', the directory may still not be index.
+;; /a/b/dir is index, then /a/b/dir/.venv may not be indexed
+(defun aspk-is-csearch-index-created (path)
+  ""
+  (and (aspk-run-command "cindex -list")
+       ;; result is saved in *Shell Command Outpus*
+
+       (not
+        (aspk-all-nil-p
+         (mapcar (lambda (x)
+                   (aspk-search-patten-in-buffer (format "^%s$" x) "*Shell Command Output*"))
+                 (aspk-path-and-its-parents (file-truename path)))
+         ))))
+
+;; (aspk-is-csearch-index-created "~/V/embe/")
+;; this also not work
+;; (defun aspk-is-csearch-index-created (path)
+;;   (aspk-run-command (format  "csearch -f '%s' 'a'" (file-truename path)))
+;;   )
+
+(defun scb-is-csearch-index-created ()
+  (interactive)
+  (aspk-is-csearch-index-created (scb-get-base-dir))
+  )
+;; (scb-is-csearch-index-created)
+
 (defun scb-search-text-i (project pattern)
   (interactive 
    (list
@@ -396,38 +512,27 @@ suffix is the file suffix to be mattched, multiple suffixes seperated by blanks.
   ;;(switch-to-buffer-other-window (get-buffer-create scb-buffer-name))
   (scb-recover-buffer)
   (with-current-buffer (get-buffer-create scb-buffer-name)
+    (let ((p (get-buffer-process (current-buffer))))
+      (and p (kill-process p)))
+    (sleep-for 0.1)
     (erase-buffer)
-    
     (insert (format "project: %s, pattern: %s\n\n" 
                     project pattern
                     ))
     ;;(shell-command-to-string "date")
-    (if t
-        (aspk-grep pattern (scb-get-file-list) scb-buffer-name scb-option-display-line-number-p)
+    (cond ((scb-use-csearch-p)
+           (aspk-csearch pattern (scb-get-base-dir)  scb-buffer-name scb-option-display-line-number-p))
+          ((scb-use-system-grep-p)
+           (aspk-system-grep pattern (scb-project-file-list scb-current-project)
+                             scb-buffer-name scb-option-display-line-number-p))
+          (t (aspk-grep pattern (scb-get-file-list) scb-buffer-name scb-option-display-line-number-p)))
 
-      (start-process "SCB" scb-buffer-name 
-                     "bash"
-                     "-c"
-                     (format 
-                      "grep -n %s `cat %s`"
-
-                      ;; Fix a bug: when the pattern is enclosed by "", then search it literal
-                      (if (and (string= (substring pattern 0 1) "\"")
-                               (string= (substring pattern -1) "\"")
-                               )
-                          (progn 
-                            (message "%s" pattern)
-                            pattern)
-                        (scb-make-distribution-pattern pattern) ;TODO: this line is not used... the pattern is directly returned by the next line
-                        pattern)
-                      (scb-project-file-list project)
-                      )))
-
-    (goto-char 0)
+    (goto-char (point-min))
     (scb-mode)
     ;;(scb-redisplay-buffer-1)
     (scb-redisplay-buffer)
     (toggle-truncate-lines 1)
+    (linum-mode -1)
     ))
 
 (defun scb-search-text (pattern)
@@ -552,17 +657,17 @@ the full list."
   (interactive)
   (with-current-buffer (find-file-noselect (scb-project-history scb-current-project) t)
     (erase-buffer)
-      
+    
     (scb-dump-variable 'scb-jump-history)
 
     (scb-dump-variable 'scb-jump-current)
 
-      ;; (insert "(setq scb-jump-history '")
-      ;; (insert (format "%s" scb-jump-history))
-      ;; (insert ")\n\n")
-      
-      ;; currently the current jump postion can't be saved(if ), only set it to the head of the history list.
-      ;;(insert "(setq scb-jump-current scb-jump-history)\n\n")
+    ;; (insert "(setq scb-jump-history '")
+    ;; (insert (format "%s" scb-jump-history))
+    ;; (insert ")\n\n")
+    
+    ;; currently the current jump postion can't be saved(if ), only set it to the head of the history list.
+    ;;(insert "(setq scb-jump-current scb-jump-history)\n\n")
 
     (save-buffer)))
 
@@ -829,12 +934,14 @@ the full list."
   (anything-other-buffer scb-anything-source-project-file "*scb project files*"))
 
 (define-derived-mode scb-mode text-mode "Scb")
-(define-key scb-mode-map  (kbd "r") 'scb-redisplay-buffer)
+(define-key scb-mode-map  (kbd "r") 'scb-toggle-search-buffer-display)
+;; (define-key scb-mode-map  (kbd "R") 'scb-clean-buffer)
 (define-key scb-mode-map  (kbd "RET") 'scb-goto-file)
 (define-key scb-mode-map  (kbd "v") 'scb-view-file)
 
 ;; Define key for evil normal state
-(evil-define-key 'normal scb-mode-map (kbd "r") 'scb-redisplay-buffer)
+(evil-define-key 'normal scb-mode-map (kbd "r") 'scb-toggle-search-buffer-display)
+;; (evil-define-key 'normal scb-mode-map (kbd "R") 'scb-clean-buffer)
 (evil-define-key 'normal scb-mode-map (kbd "RET") 'scb-goto-file)
 (evil-define-key 'normal scb-mode-map (kbd "v") 'scb-view-file)
 (evil-define-key 'normal scb-mode-map (kbd "t") 'toggle-truncate-lines)
@@ -861,30 +968,32 @@ the full list."
    c: end of the blanks, d: end of the line.
    filename:linenumber:     text xxxx xxxx
             a          b    c             d
+
+  return nil if not all pos can be found
   "
   (save-excursion
     (let ((a) (b) (c) (d))
       (goto-char start)
-      (setq a (re-search-forward ":[0-9]" nil t))
-      (decf a)
-      (setq b (re-search-forward ":" nil t))
-      (setq c (re-search-forward "[ \t]*" nil t))
-      (setq d (re-search-forward "\n" nil t))
-      
-      (list a b c d)
+      (and
+       (setq a (re-search-forward ":[0-9]" nil t))
+       (decf a)
+       (setq b (re-search-forward ":" nil t))
+       (setq c (re-search-forward "[ \t]*" nil t))
+       (setq d (re-search-forward "\n" nil t))
+       (list a b c d))
       )
-    )
-  )
+    ))
 
 (defun scb-redisplay-buffer-i (from to)
   (interactive "nFrom: \nnTo: ")
   (save-excursion
     (goto-char from)
     (let ((rst) (str) (ovl))
-      (while (<= from to)
-        (setq rst (scb-get-pos from))
+      (setq rst (scb-get-pos from))
+      (while (and rst (<= from to))
+
         (setq str (buffer-substring from (nth 2 rst)))
-        
+
         (unless (overlays-in (nth 0 rst) (nth 2 rst))
           (setq ovl
                 (make-overlay from (nth 2 rst)))
@@ -893,10 +1002,33 @@ the full list."
           (overlay-put ovl
                        'face 'font-lock-keyword-face))
 
-        (setq from (nth 3 rst))
+        (setq from (nth 3 rst)) 
+        (setq rst (scb-get-pos from))
         )))
   )
 
+(make-variable-buffer-local 'scb-search-buffer-display-style)
+
+(defun aspk-change-string-display (str display)
+  (interactive)
+  (save-excursion
+    (goto-char (point-min))
+    (while (re-search-forward (format "\\(%s\\)" str) (point-max) t)
+      ;; here (match-string 1) is the matched text by first (), (match-string 0) is th whole matched data.
+      (setq ovl
+            (make-overlay (match-beginning 1) (match-end 1)))
+      (overlay-put ovl
+                   'display display)
+      )
+    ))
+
+(defun scb-clean-buffer ()
+  "Remove all overlays that are created by scb-redisplay-buffer in search buffer. Also hide base dir"
+  (interactive)
+  (remove-overlays)
+  (aspk-change-string-display (scb-get-base-dir) "")
+  (setq scb-search-buffer-display-style 'full)
+  )
 
 (defun scb-redisplay-buffer ()
 
@@ -914,11 +1046,21 @@ the full list."
       (goto-line 3)
       (move-beginning-of-line nil)
       (setq start (point))
-      (setq end(point-max))
+      (setq end (point-max))
       (scb-redisplay-buffer-i start end)
       )
     )
+  (setq scb-search-buffer-display-style 'short)
   )
+
+
+(defun scb-toggle-search-buffer-display ()
+  (interactive)
+  (cond ((eq scb-search-buffer-display-style 'short)
+         (scb-clean-buffer))
+        ((eq scb-search-buffer-display-style 'full)
+         (scb-redisplay-buffer))
+        (t (scb-redisplay-buffer))))
 
 ;; from anything-learning.el
 (defun scb-get-element (str)
@@ -954,7 +1096,7 @@ the full list."
                    (replace-regexp-in-string "^[^:]*/" "" (nth 0 tmp))
                    scb-option-search-buffer-filename-max-length)
                   (replace-regexp-in-string "^[ \t]*" "" (nth 2 tmp)))
-    	  str)))
+          str)))
 
 (defun scb-make-distribution-pattern (pattern)
   "Convert a pattern to subword and make distribution of them."
@@ -1061,7 +1203,7 @@ e.g. lst=(\"this\"  \"is\"), result is:
         ;; Save the current file before going
         ;; 150402: I think this is not needed. Because I can record current file before anything execution.
         ;; (scb-history-set-current-file)
-         ;; Record the jump history. 
+        ;; Record the jump history. 
         ;; Change algorithm. Also saved the position before jumping
         ;; Save the current file and position
 
@@ -1074,7 +1216,7 @@ e.g. lst=(\"this\"  \"is\"), result is:
                                                   '(4))))
           ;; add the positon before jumping to history
           (and buffer
-             (with-current-buffer buffer
+               (with-current-buffer buffer
                  (save-excursion
                    (goto-char point)
                    (scb-history-add))))
